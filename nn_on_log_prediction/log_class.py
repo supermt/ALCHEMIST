@@ -57,7 +57,7 @@ class log_recorder:
         compaction_start_df = compaction_start_df[[
             "time_micros", "input_data_size", "job","compaction_reason"]]
         compaction_end_df = compaction_end_df[[
-            "time_micros", "compaction_time_micros", "compaction_time_cpu_micros", "total_output_size", ]]
+            "time_micros", "compaction_time_micros", "compaction_time_cpu_micros", "total_output_size", "lsm_state"]]
         compaction_start_df["time_micros"] -= self.start_time_micros
         compaction_end_df["time_micros"] -= self.start_time_micros
 

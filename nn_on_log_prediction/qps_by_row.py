@@ -16,19 +16,25 @@ print("training --------------------- one row to one qps")
 train_stats = train_dataset.describe().pop("qps").transpose()
 
 # train_stats = train_dataset.describe().transpose()
+
 train_labels = train_dataset.pop("qps")
 test_labels = test_dataset.pop("qps")
 
 def norm(x):
-    return x
-#   return (x - train_stats['mean']) / train_stats['std']
+    # return x
+  return (x - train_stats['min']) / (train_stats['max'] - train_stats['min'])
 normed_train_data = norm(train_dataset)
 normed_test_data = norm(test_dataset)
 
+# train_labels = normed_train_data.pop("qps")
+# test_labels= normed_test_data.pop("qps")
+
+# train_dataset.pop("qps")
+
 def one_row_one_qps_model():
   model = keras.Sequential([
-    layers.Dense(5, activation='relu', input_shape=[len(train_dataset.keys())]),
-    layers.Dense(5, activation='relu'),
+    layers.Dense(16, activation='relu', input_shape=[len(train_dataset.keys())]),
+    layers.Dense(16, activation='relu'),
     layers.Dense(1)
   ])
 
@@ -64,7 +70,7 @@ def plot_history(history):
   plt.legend()
   plt.show()
 
-early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', patience=2)
 
 history = model.fit(train_dataset, train_labels, epochs=EPOCHS,
                     validation_split = 0.2, verbose=0, callbacks=[early_stop])

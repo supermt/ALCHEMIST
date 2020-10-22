@@ -106,16 +106,23 @@ test_df = df[int(n*0.9):]
 
 
 num_features = df.shape[1]
-# normalized 
-train_mean = train_df.mean()
-train_std = train_df.std()
+# normalized, z-score normalized
+# train_mean = train_df.mean()
+# train_std = train_df.std()
 
-train_df = (train_df - train_mean) / train_std
-val_df = (val_df - train_mean) / train_std
-test_df = (test_df - train_mean) / train_std
+# train_df = (train_df - train_mean) / train_std
+# val_df = (val_df - train_mean) / train_std
+# test_df = (test_df - train_mean) / train_std
+# df_std = (df - train_mean) / train_std
+# df_std = df_std.melt(var_name='Column', value_name='Normalized')
 
-df_std = (df - train_mean) / train_std
-df_std = df_std.melt(var_name='Column', value_name='Normalized')
+def norm(x):
+    return (x-df.min()) / (df.max()-df.min())
+
+train_df = norm(train_df)
+val_df = norm(val_df)
+test_df = norm(test_df)
+
 
 from WindowGenerator import WindowGenerator
 
@@ -157,16 +164,16 @@ performance = {}
 
 val_performance['Baseline'] = baseline.evaluate(single_step_window.val)
 performance['Baseline'] = baseline.evaluate(single_step_window.test, verbose=0)
-val_performance['Linear'] = linear.evaluate(w1.val)
-performance['Linear'] = linear.evaluate(w1.test, verbose=0)
+# val_performance['Linear'] = linear.evaluate(w1.val)
+# performance['Linear'] = linear.evaluate(w1.test, verbose=0)
 
-plt.bar(x = range(len(train_df.columns)),
-        height=linear.layers[0].kernel[:,0].numpy())
-axis = plt.gca()
-axis.set_xticks(range(len(train_df.columns)))
-_ = axis.set_xticklabels(train_df.columns, rotation=45)
-plt.savefig("linear_weight.pdf")
-plt.clf()
+# plt.bar(x = range(len(train_df.columns)),
+#         height=linear.layers[0].kernel[:,0].numpy())
+# axis = plt.gca()
+# axis.set_xticks(range(len(train_df.columns)))
+# _ = axis.set_xticklabels(train_df.columns, rotation=45)
+# plt.savefig("linear_weight.pdf")
+# plt.clf()
 
 
 history = compile_and_fit(dense,single_step_window)
@@ -191,7 +198,7 @@ wide_window = WindowGenerator(input_width=60, label_width=60, shift=1,train_df=t
 # LSTMs
 lstm_model = tf.keras.models.Sequential([
     # Shape [batch, time, features] => [batch, time, lstm_units]
-    tf.keras.layers.LSTM(20, return_sequences=True),
+    tf.keras.layers.LSTM(60, return_sequences=True),
     # Shape => [batch, time, features]
     tf.keras.layers.Dense(units=1)
 ])
@@ -205,7 +212,7 @@ performance['LSTM'] = lstm_model.evaluate(wide_window.test, verbose=1)
 
 residual_lstm = ResidualWrapper(
     tf.keras.Sequential([
-    tf.keras.layers.LSTM(32, return_sequences=True),
+    tf.keras.layers.LSTM(20, return_sequences=True),
     tf.keras.layers.Dense(
         num_features,
         # The predicted deltas should start small
