@@ -1,6 +1,6 @@
 import tensorflow as tf
 import datetime
-from MODEL_PARAMETERS import *
+from .MODEL_PARAMETERS import *
 
 class Baseline(tf.keras.Model):
   def __init__(self, label_index=None):
