@@ -2,9 +2,9 @@ import load_from_current
 
 import time
 from module_wrapper.log_load_utils.log_class import log_recorder
-from module_wrapper.MODEL_PARAMETERS import *
-from module_wrapper.models import *
-from module_wrapper.WindowGenerator import WindowGenerator
+from module_wrapper.Trainer.MODEL_PARAMETERS import *
+from module_wrapper.Trainer.models import *
+from module_wrapper.Trainer.WindowGenerator import WindowGenerator
 import itertools
 import pandas as pd
 import re
@@ -16,20 +16,13 @@ import numpy as np
 import tensorflow as tf
 
 
-LOG_DIR = "log_traces/StorageMaterial.NVMeSSD/8CPU/128MB/"
+LOG_DIR = "../log_traces/StorageMaterial.NVMeSSD/8CPU/128MB/"
 report_csv = "report.csv_1202"
 LOG_file = "LOG_1202"
-
-COMPACTION_LOG_HEAD = "/compaction/compaction_job.cc:755"
-FLUSH_LOG_BEGIN = "flush_started"
-FLUSH_LOG_END = "flush_finished"
-FLUSH_FILE_CREATEION = "table_file_creation"
-
 
 def load_log_and_qps(log_file, ground_truth_csv):
     # load the data
     return log_recorder(log_file, ground_truth_csv)
-
 
 data_set = load_log_and_qps(LOG_DIR+LOG_file, LOG_DIR+report_csv)
 
@@ -157,6 +150,13 @@ wide_window = WindowGenerator(input_width=24, label_width=24, shift=1,
 val_performance = {}
 performance = {}
 
+dense = tf.keras.Sequential([
+            tf.keras.layers.Dense(units=64, activation='relu'),
+            tf.keras.layers.Dense(units=64, activation='relu'),
+            tf.keras.layers.Dense(units=1)
+        ])
+
+compile_and_fit(dense,trainer.one_step_window)
 
 print("Start single shift, single step training")
 start = time.time_ns()

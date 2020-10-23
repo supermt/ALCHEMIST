@@ -17,7 +17,6 @@ def action_list_feature_vectorize(log_and_qps, time_slice):
     elasped_time = int(real_time_speed.tail(1)["secs_elapsed"] * switch_ratio)
 
     bucket = np.zeros([elasped_time, len(feature_columns)], dtype=float)
-
     for index, flush_job in log_and_qps.flush_df.iterrows():
         # bytes/ms , equals to MB/sec
         flush_speed = round(
@@ -52,6 +51,7 @@ def action_list_feature_vectorize(log_and_qps, time_slice):
             element[3] += compaction_read_speed
             element[4] += compaction_write_speed
             for level in range(max_file_level):
+                # print(lsm_state[level])
                 element[5+level] += lsm_state[level]
                 # print(level)
     # compute the mean of the lsm state
