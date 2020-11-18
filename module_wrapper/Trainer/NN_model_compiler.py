@@ -16,7 +16,8 @@ import pandas as pd
 
 
 class model_wrapper():
-    model_list={}
+    model_list = {}
+
     @staticmethod
     def load_log_and_qps(log_file, ground_truth_csv):
         # load the data
@@ -25,8 +26,9 @@ class model_wrapper():
     def split_dataset_and_normalize(self):
         n = len(self.df)
         train_df = self.df[0:int(n*0.5)]
-        val_df = self.df[int(n*0.5):int(n*0.7)]
-        test_df = self.df[int(n*0.9):]
+        val_df = train_df
+        # val_df = self.df[int(n*0.5):int(n*0.7)]
+        test_df = self.df[int(n*0.5):]
         self.num_features = self.df.shape[1]
         # the normalize function, use the min-max scale
 
@@ -61,29 +63,31 @@ class model_wrapper():
         self.one_step_window = WindowGenerator(input_width=input_width, label_width=label_width, shift=shift,
                                                train_df=self.train_df, val_df=self.val_df, test_df=self.test_df, label_columns=label_columns)
 
-
     def assign_the_multi_step_window(self, input_width, OUT_STEPS, label_columns=["qps"]):
         self.multiple_steps_window = WindowGenerator(input_width=input_width,
                                                      label_width=OUT_STEPS, train_df=self.train_df, val_df=self.val_df, test_df=self.test_df,
                                                      shift=OUT_STEPS, label_columns=label_columns)
 
-    def set_model_list(self, single_step_list=[], multi_step_list=[]):
-        model_list = {"single": single_step_list,
-                           "multi": multi_step_list}
-        self.model_list.update(model_list)
-        print(model_list)
-        pass
-
+    def set_model_list(self, model_list=[], trainer_window=None):
+        if trainer_window not in self.model_list:
+            self.model_list[trainer_window] = []
+        self.model_list[trainer_window].extend(model_list)
 
     def compile_and_run_all(self):
-        init_map = {"eval_performance": {}, "performance": {}}
-        self.loss_map = {"single": init_map, "multi": init_map}
-        dense = tf.keras.Sequential([
-            tf.keras.layers.Dense(units=64, activation='relu'),
-            tf.keras.layers.Dense(units=64, activation='relu'),
-            tf.keras.layers.Dense(units=1)
-        ])
-        compile_and_fit(dense,self.one_step_window)
+        init_map = {"eval_performance": {}, "test_performance": {}}
+        for window_type in self.model_list:
+            for training_model in self.model_list[window_type]:
+                print("start",training_model)
+                start = time.time_ns()
+                history = compile_and_fit(training_model.net,window_type)
+                end = time.time_ns()
+                print("end tarining, time cost %.2f sec" % (float(start-end)/ 1000000000))
+                init_map["eval_performance"][training_model] = training_model.net.evaluate(window_type.val)
+                init_map["eval_performance"][training_model] = training_model.net.evaluate(window_type.test,verbose=0)
+                window_type.plot()
+                window_type.plot(training_model.net)
+                plt.savefig(str(window_type).replace("\n","_")+".pdf")
+                plt.clf()
 
     def __init__(self, LOG_DIR, LOG_file, report_csv, sequence_time_index, device_boundaries):
         self.config_set = LOG_DIR.replace("/", "_")

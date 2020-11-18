@@ -65,12 +65,16 @@ class WindowGenerator():
 
     plt.xlabel('Time [h]')
 
+    # def __repr__(self):
+    #   return "len%d,input_indices%d,label_indices%d"
+
   def __repr__(self):
     return '\n'.join([
         f'Total window size: {self.total_window_size}',
-        f'Input indices: {self.input_indices}',
-        f'Label indices: {self.label_indices}',
-        f'Label column name(s): {self.label_columns}'])
+        # f'Input indices: {self.input_indices}',
+        # f'Label indices: {self.label_indices}',
+        f'Label column name(s): {self.label_columns}'
+        ])
 
   def split_window(self, features):
     inputs = features[:, self.input_slice, :]

@@ -4,10 +4,11 @@ import pandas as pd
 
 def action_list_feature_vectorize(log_and_qps, time_slice):
     ms_to_second = 1000000
-    max_file_level = 7
+    # max_file_level = 7
     feature_columns = ["flushes", "l0compactions",
                        "other_compactions", "read", "write"]
-    file_counter_list = ["level"+str(x) for x in range(max_file_level)]
+    # file_counter_list = ["level"+str(x) for x in range(max_file_level)]
+    file_counter_list = []
     feature_columns.extend(file_counter_list)
 
     switch_ratio = ms_to_second / time_slice
@@ -50,7 +51,7 @@ def action_list_feature_vectorize(log_and_qps, time_slice):
                 element[2] += 1
             element[3] += compaction_read_speed
             element[4] += compaction_write_speed
-            for level in range(max_file_level):
+            for level in range(len(file_counter_list)):
                 # print(lsm_state[level])
                 element[5+level] += lsm_state[level]
                 # print(level)
