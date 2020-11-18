@@ -4,7 +4,7 @@ import os
 # coding=utf8
 import re
 
-MODULE_NAME = "DOTA_SF"
+MODULE_NAME = "ALCHEMIST"
 regex = r".*%s\/" % MODULE_NAME
 
 test_str = __file__
