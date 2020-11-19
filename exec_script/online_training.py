@@ -28,45 +28,8 @@ from river import stats
 from river import time_series
 from river import stream
 
-def get_ordinal_date(x):
-    return {'secs_elapsed': int(x['secs_elapsed'])}    
 
-
-def make_model(alpha):
-    
-    extract_features = compose.TransformerUnion(get_ordinal_date)
-
-    scale = preprocessing.StandardScaler()
-
-    learn = linear_model.LinearRegression(
-        intercept_lr=0,
-        optimizer=optim.SGD(3),
-        loss=optim.losses.Quantile(alpha=alpha)
-    )
-
-    model = extract_features | scale | learn
-    model = time_series.Detrender(regressor=model, window_size=12)
-
-    return model
-
-metric = metrics.MAE()
-
-models = {
-    'lower': make_model(alpha=0.05),
-    'center': make_model(alpha=0.5),
-    'upper': make_model(alpha=0.95)
-}
-
-dates = []
-y_trues = []
-y_preds = {
-    'lower': [],
-    'center': [],
-    'upper': []
-}
-
-
-class online_training_dataset(datasets.base.FileDataset):
+class timeonly_training_dataset(datasets.base.FileDataset):
     def __init__(self,input_filename):
         super().__init__(filename=input_filename,task=datasets.base.REG,n_features=1,n_samples=1440)
 
@@ -77,30 +40,62 @@ class online_training_dataset(datasets.base.FileDataset):
             converters={'interval_qps': int}
         )
 
-# for x,y in online_training_dataset():
-#     print(x,y)
+def get_ordinal_date(x):
+    return {'ordinal_date': int(x['secs_elapsed'])}
 
-target_data = "../log_traces/Mixgraph/1000_0.0000073_45000/report.csv"
+
+model = compose.Pipeline(
+    ('ordinal_date', compose.FuncTransformer(get_ordinal_date)),
+    ('scale', preprocessing.MinMaxScaler()),
+    ('lin_reg', linear_model.LinearRegression())
+)
+
+from river import metrics
+import matplotlib.pyplot as plt
+
+
+# target_data = "../log_traces/Mixgraph/1000_0.0000073_45000/report.csv"
+target_data = "../log_traces/StorageMaterial.NVMeSSD/12CPU/64MB/report.csv_1180"
 import os
 target_data = os.path.abspath(target_data)
-for x, y in online_training_dataset(target_data):
-    y_trues.append(y)
-    dates.append(int(x['secs_elapsed']))
+
+def evaluate_model(model): 
     
-    for name, model in models.items():
-        y_preds[name].append(model.predict_one(x))
+    metric = metrics.Rolling(metrics.MAE(), 12)
+    
+    # dates = []
+    y_trues = []
+    y_preds = []
+
+    for x, y in timeonly_training_dataset(target_data):
+        
+        # Obtain the prior prediction and update the model in one go
+        y_pred = model.predict_one(x)
         model.learn_one(x, y)
+        
+        # Update the error metric
+        metric.update(y, y_pred)
+        
+        # Store the true value and the prediction
+        # dates.append(x['secs_elapsed'])
+        y_trues.append(y)
+        y_preds.append(y_pred)
+        
+    # Plot the results
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.grid(alpha=0.75)
+    ax.plot(y_trues, lw=3, color='#2ecc71', alpha=0.8, label='Ground truth')
+    ax.plot(y_preds, lw=3, color='#e74c3c', alpha=0.8, label='Prediction')
+    ax.legend()
+    ax.set_title(metric)
+    plt.show()
 
-    # Update the error metric
-    metric.update(y, y_preds['center'][-1])
+model = compose.Pipeline(
+    ('ordinal_date', compose.FuncTransformer(get_ordinal_date)),
+    ('scale', preprocessing.MinMaxScaler()),
+    ('lin_reg', linear_model.LinearRegression(intercept_lr=0,optimizer=optim.SGD(0.03))),
+)
 
-# Plot the results
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.grid(alpha=0.75)
-ax.plot(dates, y_trues, lw=3, color='#2ecc71', alpha=0.8, label='Truth')
-ax.plot(dates, y_preds['center'], lw=3, color='#e74c3c', alpha=0.8, label='Prediction')
-ax.fill_between(dates, y_preds['lower'], y_preds['upper'], color='#e74c3c', alpha=0.3, label='Prediction interval')
-ax.legend()
-ax.set_title(metric);
-plt.savefig("online_predicting")
-plt.clf()
+model = time_series.Detrender(regressor=model, window_size=10)
+
+evaluate_model(model)
